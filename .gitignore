@@ -1,0 +1,7 @@
+tags
+build/
+Debug/
+Release/
+cscope.*
+*.o
+test
