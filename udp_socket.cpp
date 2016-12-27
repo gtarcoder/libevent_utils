@@ -8,7 +8,7 @@ void UdpSocket::ReadCallback(evutil_socket_t fd, short events, void* arg){
     udp_socket->read_len_ = recv(udp_socket->fd_, udp_socket->read_buffer_, 0xffff, 0);
     udp_socket->read_buffer_[udp_socket->read_len_] = '\0';
     assert(udp_socket->read_cb_);
-    udp_socket->read_cb_(udp_socket->read_buffer_, udp_socket->read_len_, udp_socket);
+    udp_socket->read_cb_(udp_socket->read_buffer_, udp_socket->read_len_);
 }
 
 bool UdpSocket::Bind(const char* local_ip, uint16_t local_port, struct event_base* base){
@@ -65,7 +65,8 @@ UdpSocket::~UdpSocket(){
 #endif
 
 #ifdef ASYNC_UDP
-    event_free(event_);
+    if(event_)
+        event_free(event_);
 #endif
 }
 
@@ -84,6 +85,7 @@ bool UdpSocket::Bind(const char* local_ip, uint16_t local_port){
        return false;
     }
     SetRecvSendBufSize(fd_, 0xfffff);
+    return true;
 }
 
 void UdpSocket::SetRemoteAddr(const char* remote_ip, uint16_t remote_port){

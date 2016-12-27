@@ -1,6 +1,7 @@
 #ifndef UDP_SOCKET_H_
 #define UDP_SOCKET_H_
 #include<stdint.h>
+#include<functional>
 #ifdef ASYNC_UDP
     #include<event2/event.h>
 #endif
@@ -21,20 +22,16 @@ public:
     int Recv(char* buf, int buf_len);
     int WaitMsg(int time_out, int* elapsed_time);
 
+    inline void SetDataReadCallback(std::function<void(char*, int)> cb){read_cb_ = cb;};
 private:
 #ifdef ASYNC_UDP
     static void ReadCallback(evutil_socket_t fd, short events, void* arg);
-    typedef void(*DataReadCallback)(char* buf, int len, void* arg);
-    inline void SetDataReadCallback(DataReadCallback cb){
-        read_cb_ = cb;
-    }
-    DataReadCallback read_cb_;
+    std::function<void(char*, int len)> read_cb_;
     struct event_base* base_;
     struct event*      event_;
     char read_buffer_[0xffff];
     int read_len_;
 #endif
-
     int                fd_;
     struct sockaddr    remote_addr_;
 };

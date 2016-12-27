@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string>
+#include <functional>
 #include <event2/bufferevent.h>
 #include <event2/buffer.h>
 #include <event2/listener.h>
@@ -32,12 +33,21 @@ public:
     inline void SetEventPriority(int priority){ priority_ = priority; };
     inline uint16_t GetPeerPort(){ return peer_port_; };
     inline uint16_t GetLocalPort(){ return local_port_; };
+    inline bool IsRecvRawMode(){ return recv_raw_mode_;};
+    inline bool IsSendRawMode(){return send_raw_mode_;};
+    inline void SetRecvRawMode(bool raw){ recv_raw_mode_ = raw;};
+    inline void SetSendRawMode(bool raw){ send_raw_mode_ = raw;};
+
+    inline void SetDelConnCallback(std::function<void(uint16_t)> cb) { delconn_cb_ = cb;};
+    inline std::function<void(uint16_t)> GetDelConnCallback(){return delconn_cb_;};
 protected:
     static void InnerConnectionReadCallback(struct bufferevent* , void*);
     static void InnerConnectionEventCallback(struct bufferevent* , short events, void*);
     static void PeerReadCallback(struct bufferevent*, void* arg);
     static void PeerWriteCallback(struct bufferevent*, void* arg);
     static void PeerEventCallback(struct bufferevent*, short events, void*);
+
+    std::function<void(uint16_t)> delconn_cb_;
 
     struct bufferevent* peer_event_; 
     struct event_base* base_;
@@ -56,6 +66,8 @@ protected:
     bool        connected_;
     char        buffer_[0xffff];
     int         buffer_len_;
+    bool        recv_raw_mode_;
+    bool        send_raw_mode_;
 };
 
 #endif

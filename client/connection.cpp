@@ -14,18 +14,22 @@ void Connection::InnerConnectionEventCallback(struct bufferevent* event, short e
 
 void Connection::PeerReadCallback(struct bufferevent* bev, void* arg){
     Connection* item = (Connection*)arg;
-    struct evbuffer* input = bufferevent_get_input(bev);
-    if(item->buffer_len_ < 0){
-        evbuffer_remove(input, (void*)&item->buffer_len_, 4);   
-        item->buffer_len_ = ntohl(item->buffer_len_);
-    }
-    if(item->buffer_len_ > 0 && item->buffer_len_ <= evbuffer_get_length(input)){
-        evbuffer_remove(input, (void*)item->buffer_, item->buffer_len_); 
-        item->buffer_[item->buffer_len_] = '\0';
-        //process the data received
+    if(item->recv_raw_mode_){
         item->OnPeerRead();
-        //cleared the buffer
-        item->buffer_len_ = -1;
+    }else{
+        struct evbuffer* input = bufferevent_get_input(bev);
+        if(item->buffer_len_ < 0){
+            evbuffer_remove(input, (void*)&item->buffer_len_, 4);   
+            item->buffer_len_ = ntohl(item->buffer_len_);
+        }
+        if(item->buffer_len_ > 0 && item->buffer_len_ <= evbuffer_get_length(input)){
+            evbuffer_remove(input, (void*)item->buffer_, item->buffer_len_); 
+            item->buffer_[item->buffer_len_] = '\0';
+            //process the data received
+            item->OnPeerRead();
+            //cleared the buffer
+            item->buffer_len_ = -1;
+        }
     }
 };
 void Connection::PeerWriteCallback(struct bufferevent* bev, void* arg){
@@ -50,6 +54,9 @@ Connection:: Connection(
     ,fd_(-1)
     ,connected_(false)
     ,buffer_len_(-1)
+    ,recv_raw_mode_(false)
+    ,send_raw_mode_(false)
+    ,delconn_cb_(NULL)
 {
   printf("local port : %u\n", local_port_);
   printf("peer port : %u\n", peer_port_);
@@ -59,7 +66,7 @@ Connection:: Connection(
 }
 
 Connection:: ~Connection(){
-  printf("connection destroyed\n");
+  printf("connection %u destroyed\n", index_);
   bufferevent_free(peer_event_);
   if(conn_2_server_pair_[0]){
     bufferevent_free(conn_2_server_pair_[0]);
@@ -122,6 +129,8 @@ void Connection::OnPeerEvent(short events){
         bufferevent_setfd(peer_event_, -1);
         connected_ = false;
         printf("connection closed!\n");
+        if(delconn_cb_)
+          delconn_cb_(this->index_);
    }else if (events & BEV_EVENT_ERROR){
         printf("got an error on connection in %s\n", strerror(errno));
    }

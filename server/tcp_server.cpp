@@ -56,6 +56,7 @@ void TcpServer::OnListen(struct evconnlistener* listener, evutil_socket_t sock, 
     Connection* conn = new Connection(client_ip, client_port, 0, next_client_index_);
     connections_[next_client_index_++] = conn;
     conn->Initialize(base_, sock);
+    conn->Start();
 }
 
 void TcpServer::OnInnerConnectionRead(bufferevent* event, Connection* conn){
